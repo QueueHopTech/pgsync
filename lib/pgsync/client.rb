@@ -79,6 +79,15 @@ module PgSync
 
         pretty_list list_items
       else
+        if opts[:tenant_schema_first] || opts[:tenant_schema_only]
+          if opts[:preserve]
+            raise PgSync::Error, "Cannot use --preserve with --schema-first or --schema-only"
+          end
+
+          log "* Dumping Tenant schema schema"
+          sync_tenant_schema(source, destination, ['public', 'foodcellar_47th_rd'])
+        end
+
         if opts[:schema_first] || opts[:schema_only]
           if opts[:preserve]
             raise PgSync::Error, "Cannot use --preserve with --schema-first or --schema-only"
@@ -88,7 +97,7 @@ module PgSync
           sync_schema(source, destination, tables)
         end
 
-        unless opts[:schema_only]
+        unless opts[:schema_only] || opts[:tenant_schema_only]
           confirm_tables_exist(destination, tables, "destination")
 
           in_parallel(tables) do |table, table_opts|
@@ -151,6 +160,12 @@ module PgSync
       system("#{dump_command} | #{restore_command}")
     end
 
+    def sync_tenant_schema(source, destination, tenants)
+      dump_command = source.dump_tenant_command(tenants)
+      restore_command = destination.restore_command
+      system("#{dump_command} | #{restore_command}")
+    end
+
     def parse_args(args)
       opts = Slop.parse(args) do |o|
         o.banner = %{Usage:
@@ -159,6 +174,7 @@ module PgSync
 Options:}
         o.string "-d", "--db", "database"
         o.string "-t", "--tables", "tables to sync"
+        o.string "-T", "--tenants", "tenants to sync"
         o.string "-g", "--groups", "groups to sync"
         o.string "--schemas", "schemas to sync"
         o.string "--from", "source"
@@ -176,6 +192,8 @@ Options:}
         o.boolean "--truncate", "truncate existing rows", default: false
         o.boolean "--schema-first", "schema first", default: false
         o.boolean "--schema-only", "schema only", default: false
+        o.boolean "--tenant-schema-only", "tenant schema only", default: false
+        o.boolean "--tenant-schema-first", "tenant schema first", default: false
         o.boolean "--all-schemas", "all schemas", default: false
         o.boolean "--no-rules", "do not apply data rules", default: false
         o.boolean "--setup", "setup", default: false
