@@ -112,7 +112,13 @@ module PgSync
 
     def dump_command(tables)
       tables = tables.keys.map { |t| "-t #{Shellwords.escape(quote_ident_full(t))}" }.join(" ")
+      # tables = ""
       "pg_dump -Fc --verbose --schema-only --no-owner --no-acl #{tables} -d #{@url}"
+    end
+
+    def dump_tenant_command(tenants)
+      tenants = tenants.map { |t| "-n #{Shellwords.escape(quote_ident_full(t))}" }.join(" ")
+      "pg_dump -Fc --verbose --schema-only --no-owner --no-acl #{tenants} -d #{@url}"
     end
 
     def restore_command

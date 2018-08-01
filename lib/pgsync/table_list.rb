@@ -11,6 +11,17 @@ module PgSync
 
     def tables
       tables = nil
+      if opts[:tenants]
+        tables ||= Hash.new { |hash, key| hash[key] = {} }
+        specified_groups = to_arr(opts[:tenants])
+        specified_groups.map do |tag|
+          if (t = (config["tenants"] || {})[tag])
+            t.each { |tables_to_sync| tables["#{tag}.#{tables_to_sync}"] = {} }
+          else
+            raise PgSync::Error, "Tenant not found: #{tag}"
+          end
+        end
+      end
 
       if opts[:groups]
         tables ||= Hash.new { |hash, key| hash[key] = {} }
